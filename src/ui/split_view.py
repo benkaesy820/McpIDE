@@ -96,6 +96,10 @@ class SplitViewContainer(QWidget):
         # Add tab widget to splitter
         parent_splitter.addWidget(tabs)
 
+        # Make sure the parent splitter has the context menu policy set
+        parent_splitter.setContextMenuPolicy(Qt.CustomContextMenu)
+        parent_splitter.customContextMenuRequested.connect(self._show_splitter_context_menu)
+
         # Connect signals
         tabs.tabCloseRequested.connect(lambda index: self._on_tab_close_requested(tabs, index))
         tabs.currentChanged.connect(lambda index: self._on_current_tab_changed(tabs, index))
@@ -386,10 +390,6 @@ class SplitViewContainer(QWidget):
 
     def _show_splitter_context_menu(self, position):
         """Show context menu for splitter"""
-        # Only show context menu if we have multiple splits
-        if len(self.editor_tabs) < 2:
-            return
-
         # Create menu
         from PySide6.QtWidgets import QMenu
         menu = QMenu()

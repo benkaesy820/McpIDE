@@ -9,7 +9,8 @@ Provides a tree view of files and directories with context menu actions.
 import os
 from PySide6.QtWidgets import (
     QTreeView, QFileSystemModel, QVBoxLayout, QWidget,
-    QLineEdit, QMenu, QMessageBox, QInputDialog, QFileDialog
+    QLineEdit, QMenu, QMessageBox, QInputDialog, QFileDialog,
+    QAbstractItemView
 )
 from PySide6.QtCore import Qt, QDir, Signal, Slot, QModelIndex, QSize
 from PySide6.QtGui import QAction, QKeySequence
@@ -53,6 +54,9 @@ class FileExplorer(QWidget):
         self.tree_view.setAcceptDrops(True)
         self.tree_view.setDropIndicatorShown(True)
         self.tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
+
+        # Enable drag and drop
+        self.tree_view.setDragDropMode(QAbstractItemView.DragOnly)
 
         # Hide unnecessary columns
         self.tree_view.setHeaderHidden(True)
