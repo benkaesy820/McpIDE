@@ -14,25 +14,26 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QSettings
 
 # Add the src directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from src.core.settings import Settings
+from src.core.app_settings import AppSettings
 from src.ui.main_window import MainWindow
 
 def main():
+    """Main application entry point"""
     # Create the application
     app = QApplication(sys.argv)
     app.setApplicationName("McpIDE")
     app.setOrganizationName("McpIDE")
     app.setOrganizationDomain("mcpide.org")
-
+    
     # Initialize settings
-    settings = Settings()
-
+    settings = AppSettings()
+    
     # Create and show the main window
     window = MainWindow(settings)
     window.show()
-
+    
     # Start the event loop
     sys.exit(app.exec())
 

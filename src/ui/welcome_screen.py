@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Welcome screen component for McpIDE.
+Shown when the application starts with no workspace open.
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QListWidgetItem, QFrame, QSizePolicy
@@ -16,9 +21,10 @@ class WelcomeScreen(QWidget):
     open_folder_requested = Signal()
     recent_workspace_selected = Signal(str)
     
-    def __init__(self, settings):
+    def __init__(self, settings, theme_manager):
         super().__init__()
         self.settings = settings
+        self.theme_manager = theme_manager
         
         self._setup_ui()
         self._connect_signals()
@@ -133,5 +139,32 @@ class WelcomeScreen(QWidget):
     @Slot(str)
     def _on_theme_changed(self, theme):
         """Handle theme change"""
-        # Update UI based on theme if needed
-        pass
+        # Update UI based on theme
+        bg_color = self.theme_manager.get_color("background", theme)
+        fg_color = self.theme_manager.get_color("foreground", theme)
+        
+        # Apply colors to widgets
+        self.title_label.setStyleSheet(f"color: {fg_color.name()};")
+        self.subtitle_label.setStyleSheet(f"color: {fg_color.name()};")
+        self.actions_label.setStyleSheet(f"color: {fg_color.name()};")
+        self.recent_label.setStyleSheet(f"color: {fg_color.name()};")
+        
+        # Update buttons
+        button_style = f"""
+            QPushButton {{
+                background-color: {self.theme_manager.get_color('button', theme).name()};
+                color: {self.theme_manager.get_color('buttonText', theme).name()};
+                border: 1px solid {self.theme_manager.get_color('border', theme).name()};
+                border-radius: 4px;
+                padding: 6px 12px;
+            }}
+            
+            QPushButton:hover {{
+                background-color: {self.theme_manager.get_color('highlight', theme).name()};
+                color: {self.theme_manager.get_color('highlightedText', theme).name()};
+            }}
+        """
+        
+        self.new_file_button.setStyleSheet(button_style)
+        self.open_file_button.setStyleSheet(button_style)
+        self.open_folder_button.setStyleSheet(button_style)

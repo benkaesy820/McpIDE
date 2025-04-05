@@ -13,7 +13,16 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, Slot, QSize
 from PySide6.QtGui import QIcon, QAction
 
-from src.ui.editor import CodeEditor
+class EditorTabWidget(QTabWidget):
+    """
+    Custom tab widget for editors with additional functionality
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTabsClosable(True)
+        self.setMovable(True)
+        self.setDocumentMode(True)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
 
 class SplitViewContainer(QWidget):
     """
@@ -21,8 +30,9 @@ class SplitViewContainer(QWidget):
     Allows horizontal and vertical splitting.
     """
     # Signals
-    editor_created = Signal(CodeEditor)  # Emitted when a new editor is created
-    editor_closed = Signal(CodeEditor)   # Emitted when an editor is closed
+    editor_created = Signal(object)  # Emitted when a new editor is created
+    editor_closed = Signal(object)   # Emitted when an editor is closed
+    current_editor_changed = Signal(object)  # Emitted when the current editor changes
     
     def __init__(self, settings, parent=None):
         super().__init__(parent)
@@ -52,23 +62,18 @@ class SplitViewContainer(QWidget):
             parent_splitter = self.main_splitter
             
         # Create tab widget
-        tabs = QTabWidget()
-        tabs.setTabsClosable(True)
-        tabs.setMovable(True)
-        tabs.setDocumentMode(True)
+        tabs = EditorTabWidget()
         
         # Add tab widget to splitter
         parent_splitter.addWidget(tabs)
         
         # Connect signals
         tabs.tabCloseRequested.connect(lambda index: self._on_tab_close_requested(tabs, index))
+        tabs.currentChanged.connect(lambda index: self._on_current_tab_changed(tabs, index))
+        tabs.customContextMenuRequested.connect(lambda pos: self._show_tab_context_menu(tabs, pos))
         
         # Add to tracking dictionary
         self.editor_tabs[id(tabs)] = tabs
-        
-        # Add context menu for tabs
-        tabs.setContextMenuPolicy(Qt.CustomContextMenu)
-        tabs.customContextMenuRequested.connect(lambda pos: self._show_tab_context_menu(tabs, pos))
         
         return tabs
     
@@ -158,7 +163,7 @@ class SplitViewContainer(QWidget):
         """Get the currently active tab widget"""
         # Find the tab widget that has focus
         for tab_id, tabs in self.editor_tabs.items():
-            if tabs.hasFocus() or tabs.currentWidget() and tabs.currentWidget().hasFocus():
+            if tabs.hasFocus() or (tabs.currentWidget() and tabs.currentWidget().hasFocus()):
                 return tabs
         
         # If none has focus, return the first one
@@ -173,7 +178,7 @@ class SplitViewContainer(QWidget):
         widget = tab_widget.widget(index)
         
         # Check if it's an editor with unsaved changes
-        if hasattr(widget, 'file_path') and hasattr(widget, 'document') and widget.document().isModified():
+        if hasattr(widget, 'document') and widget.document().isModified():
             # TODO: Handle unsaved changes
             pass
         
@@ -181,8 +186,7 @@ class SplitViewContainer(QWidget):
         tab_widget.removeTab(index)
         
         # Emit signal
-        if isinstance(widget, CodeEditor):
-            self.editor_closed.emit(widget)
+        self.editor_closed.emit(widget)
         
         # Check if this tab widget is now empty
         if tab_widget.count() == 0:
@@ -216,6 +220,12 @@ class SplitViewContainer(QWidget):
                         
                         # Delete the parent
                         parent.deleteLater()
+    
+    def _on_current_tab_changed(self, tab_widget, index):
+        """Handle current tab changed"""
+        if index >= 0:
+            widget = tab_widget.widget(index)
+            self.current_editor_changed.emit(widget)
     
     def _show_tab_context_menu(self, tab_widget, position):
         """Show context menu for tab widget"""
@@ -321,15 +331,21 @@ class SplitViewContainer(QWidget):
         for tab_id, tabs in self.editor_tabs.items():
             for i in range(tabs.count()):
                 widget = tabs.widget(i)
-                if isinstance(widget, CodeEditor):
-                    editors.append(widget)
+                editors.append(widget)
         return editors
     
     def get_current_editor(self):
         """Get the currently active editor"""
         tab_widget = self._get_active_tab_widget()
         if tab_widget:
-            widget = tab_widget.currentWidget()
-            if isinstance(widget, CodeEditor):
-                return widget
+            return tab_widget.currentWidget()
+        return None
+    
+    def get_editor_by_path(self, file_path):
+        """Get an editor by its file path"""
+        for tab_id, tabs in self.editor_tabs.items():
+            for i in range(tabs.count()):
+                widget = tabs.widget(i)
+                if hasattr(widget, 'file_path') and widget.file_path == file_path:
+                    return widget
         return None

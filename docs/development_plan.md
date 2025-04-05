@@ -2,41 +2,41 @@
 
 This document outlines the iterative development plan for McpIDE, a VS Code-inspired IDE with integrated support for the Model Context Protocol (MCP) and other productivity tools for software engineers and knowledge workers.
 
-## Phase 1: Project Setup and Basic UI
+## Phase 1: Core Architecture and UI Framework
 
-- [x] Set up project structure
-- [x] Create main window with basic layout
-- [x] Implement dark/light mode toggle
-- [x] Add local storage for settings
+- [ ] Design modular architecture with clear separation of concerns
+- [ ] Implement application settings with local storage
+- [ ] Create theme system with dark/light mode support
+- [ ] Design main window layout with docking support
+- [ ] Implement split view editor container
+- [ ] Create file explorer with basic functionality
 
-## Phase 2: File Management
+## Phase 2: Editor Features
 
-- [x] Implement file explorer
-- [x] Add workspace management
-- [x] Create recent workspaces functionality
-- [x] Implement file opening/editing
+- [ ] Implement code editor with syntax highlighting
+- [ ] Add line numbers and gutter support
+- [ ] Implement text editing features (indentation, selection, etc.)
+- [ ] Add search and replace functionality
+- [ ] Implement cursor position tracking
+- [ ] Create status bar with editor information
 
-## Phase 3: Editor Features
+## Phase 3: File and Workspace Management
 
-- [x] Add basic editor functionality
-- [x] Implement line numbers
-- [x] Add auto-indentation and improved editing experience
-- [x] Implement unsaved changes tracking
-- [x] Fix compatibility issues with different PySide6 versions
-- [ ] Add syntax highlighting
-- [ ] Add basic search functionality
-- [x] Create status bar with cursor position
+- [ ] Implement file operations (create, open, save, delete)
+- [ ] Add workspace management
+- [ ] Create recent workspaces functionality
+- [ ] Implement session persistence
+- [ ] Add project-wide search
+- [ ] Create file type associations
 
-## Phase 4: Additional Features
+## Phase 4: Terminal and Tools Integration
 
-- [x] Remember last workspace
-- [x] Skip welcome screen for returning users
-- [x] Remember open files between sessions
-- [x] Implement proper state saving/restoring
-- [ ] Add terminal integration
-- [ ] Implement basic settings panel
-- [ ] Create markdown preview for .md files
-- [ ] Add project documentation
+- [ ] Implement integrated terminal
+- [ ] Add task running capabilities
+- [ ] Create output panel for build results
+- [ ] Implement problems panel for errors and warnings
+- [ ] Add debug console
+- [ ] Create extensions framework
 
 ## Phase 5: Model Context Protocol (MCP) Integration
 
@@ -45,6 +45,7 @@ This document outlines the iterative development plan for McpIDE, a VS Code-insp
 - [ ] Add resource exposure for codebase files
 - [ ] Implement MCP tools for code operations
 - [ ] Create AI assistant integration panel
+- [ ] Add MCP configuration UI
 
 ## Phase 6: Advanced AI Features
 
@@ -53,6 +54,7 @@ This document outlines the iterative development plan for McpIDE, a VS Code-insp
 - [ ] Create refactoring suggestions
 - [ ] Implement natural language code search
 - [ ] Add project analysis and insights
+- [ ] Create AI pair programming features
 
 ## Phase 7: Productivity Enhancements
 
@@ -61,3 +63,20 @@ This document outlines the iterative development plan for McpIDE, a VS Code-insp
 - [ ] Create task management integration
 - [ ] Add version control system integration
 - [ ] Implement collaborative editing features
+- [ ] Create plugin system for third-party extensions
+
+## Implementation Approach
+
+For each phase:
+1. Design the architecture and components
+2. Implement core functionality
+3. Add UI elements and user interaction
+4. Test and refine
+5. Document features and usage
+
+## Current Focus
+
+We are currently focusing on Phase 1: Core Architecture and UI Framework, specifically:
+- Implementing the split view editor container
+- Creating the main window layout
+- Setting up the theme system

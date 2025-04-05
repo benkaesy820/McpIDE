@@ -8,23 +8,13 @@ McpIDE is designed to be an all-in-one development environment that combines the
 
 ## Features
 
-### Implemented
+### Current
 - Modern UI with dark/light mode switching
-- File explorer with context menu actions (new file, rename, delete)
+- Split editor views for enhanced productivity
+- File explorer with context menu actions
 - Workspace management with recent workspaces list
-- Advanced code editing with:
-  - Line numbers
-  - Auto-indentation
-  - Unsaved changes tracking
-  - Context menu
-  - Cursor position tracking
-  - Compatibility with different PySide6 versions
 - Settings management with local storage
-- Session persistence:
-  - Last workspace memory (reopens your last project)
-  - Remembers open files between sessions
-  - Preserves window layout and state
-- Improved error handling for file operations
+- Session persistence
 
 ### Planned
 - Model Context Protocol (MCP) Integration:
@@ -36,7 +26,7 @@ McpIDE is designed to be an all-in-one development environment that combines the
   - Search functionality with AI-powered natural language queries
   - Terminal integration
   - Markdown preview for documentation
-  - Split editor views
+
 - Productivity Enhancements:
   - Code snippets management
   - AI-assisted code completion
@@ -58,6 +48,8 @@ Learn more about MCP at [modelcontextprotocol.io](https://modelcontextprotocol.i
 - PySide6 6.5.0+ (compatible with Python 3.10-3.13)
 - QScintilla 2.14.0+
 - Pygments 2.15.0+
+- QtAwesome 1.2.0+ (for icons)
+- jsonschema 4.17.0+ (for MCP integration)
 
 Note: The specific versions of these dependencies may need to be adjusted based on compatibility with your Python version. See the requirements.txt file for the exact versions used in development.
 
@@ -65,7 +57,7 @@ Note: The specific versions of these dependencies may need to be adjusted based 
 
 1. Clone the repository
 2. Install dependencies: `pip install -r requirements.txt`
-3. Run the application: `python src/main.py`
+3. Run the application: `python main.py`
 
 ## License
 
