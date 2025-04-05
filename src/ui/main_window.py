@@ -400,16 +400,24 @@ class MainWindow(QMainWindow):
 
             # Check if we have a specific target tab widget from a drop
             target_tab_widget = self.split_view_container.get_last_drop_target()
+            drop_index = self.split_view_container._last_drop_index
 
             if target_tab_widget and target_tab_widget in self.split_view_container.editor_tabs.values():
                 # Add to the specific tab widget that received the drop
-                self.split_view_container.add_editor(editor, file_name, target_tab_widget)
+                index = self.split_view_container.add_editor(editor, file_name, target_tab_widget)
+
+                # If we have a specific drop index, move the tab to that position
+                if drop_index >= 0 and drop_index < target_tab_widget.count():
+                    # Move the newly added tab to the drop index
+                    target_tab_widget.tabBar().moveTab(target_tab_widget.count() - 1, drop_index)
+                    target_tab_widget.setCurrentIndex(drop_index)
             else:
                 # Add to the active tab widget
                 self.split_view_container.add_editor(editor, file_name)
 
-            # Reset the last drop target
+            # Reset the last drop target and index
             self.split_view_container._last_drop_target = None
+            self.split_view_container._last_drop_index = -1
 
             self.status_bar.showMessage(f"Opened {file_path}")
         else:

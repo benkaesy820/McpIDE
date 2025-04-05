@@ -43,6 +43,13 @@ class EditorTabWidget(QTabWidget):
         """Handle drop event"""
         # Process dropped files
         if event.mimeData().hasUrls():
+            # Get the tab index where the drop occurred
+            tab_pos = event.pos()
+            drop_index = self.tabBar().tabAt(tab_pos)
+
+            # Store the drop index for later use - add 1 to insert after the current tab
+            self.last_drop_index = drop_index + 1 if drop_index >= 0 else self.count()
+
             for url in event.mimeData().urls():
                 file_path = url.toLocalFile()
                 if os.path.isfile(file_path):
@@ -66,6 +73,7 @@ class SplitViewContainer(QWidget):
         self.main_splitter = None
         self.editor_tabs = {}  # Dictionary to track editor tab widgets
         self._last_drop_target = None  # Store the last widget that received a drop
+        self._last_drop_index = -1  # Store the index where the drop occurred
 
         self._setup_ui()
 
@@ -354,6 +362,10 @@ class SplitViewContainer(QWidget):
         index = tab_widget.addTab(editor, title)
         tab_widget.setCurrentIndex(index)
 
+        # Connect editor signals
+        if hasattr(editor, 'file_dropped'):
+            editor.file_dropped.connect(self.file_dropped.emit)
+
         # Emit signal
         self.editor_created.emit(editor)
 
@@ -432,6 +444,13 @@ class SplitViewContainer(QWidget):
             # This is a text file we can open
             # Store the target widget for the main window to use
             self._last_drop_target = target_widget
+
+            # Store the drop index if available
+            if hasattr(target_widget, 'last_drop_index'):
+                self._last_drop_index = target_widget.last_drop_index
+            else:
+                self._last_drop_index = -1
+
             # Emit signal with file path
             self.file_dropped.emit(file_path)
         else:
