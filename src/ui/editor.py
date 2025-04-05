@@ -6,10 +6,13 @@ Code editor component for McpIDE.
 Provides syntax highlighting, line numbers, and other editing features.
 """
 
-from PySide6.QtWidgets import QPlainTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtCore import Qt, Signal, Slot, QRect, QSize, QMimeData, QUrl
-from PySide6.QtGui import QColor, QPainter, QTextFormat, QFont, QFontMetrics, QTextCursor, QDragEnterEvent, QDropEvent
 import os
+import re
+from PySide6.QtWidgets import QPlainTextEdit, QWidget, QTextEdit
+from PySide6.QtCore import Qt, Signal, Slot, QRect, QSize, QRegularExpression
+from PySide6.QtGui import QColor, QPainter, QFont, QTextCursor, QTextCharFormat, QTextDocument
+
+from src.utils.syntax_highlighter import PygmentsSyntaxHighlighter, detect_language_from_filename
 
 class LineNumberArea(QWidget):
     """Widget for displaying line numbers"""
@@ -30,6 +33,7 @@ class CodeEditor(QPlainTextEdit):
     """
     cursor_position_changed = Signal(int, int)  # line, column
     file_dropped = Signal(str)  # Emitted when a file is dropped onto the editor
+    search_finished = Signal(bool)  # Emitted when search is finished (found or not)
 
     def __init__(self, settings, theme_manager):
         super().__init__()
@@ -45,6 +49,9 @@ class CodeEditor(QPlainTextEdit):
 
         # Set parent tab widget for later reference
         self._parent_tab_widget = None
+
+        # Initialize syntax highlighter
+        self.highlighter = PygmentsSyntaxHighlighter(self.document(), theme_manager)
 
     def _setup_editor(self):
         """Set up editor properties"""
@@ -240,12 +247,19 @@ class CodeEditor(QPlainTextEdit):
         """Set the file path"""
         self.file_path = file_path
 
+        # Set syntax highlighter based on file extension
+        if file_path:
+            self.highlighter.set_lexer_from_filename(file_path)
+
     @Slot(str)
-    def _on_theme_changed(self, theme):
+    def _on_theme_changed(self, theme_name):
         """Handle theme change"""
         # Update line numbers
         self.update()
         self.line_number_area.update()
+
+        # Update syntax highlighter theme
+        self.highlighter.set_theme(theme_name)
 
     @Slot(str, int)
     def _on_font_changed(self, family, size):
@@ -282,7 +296,7 @@ class CodeEditor(QPlainTextEdit):
         except UnicodeDecodeError:
             # Handle binary files
             return False
-        except Exception as e:
+        except Exception:
             # Handle other errors
             return False
 
@@ -301,7 +315,7 @@ class CodeEditor(QPlainTextEdit):
             self.set_file_path(file_path)
             self.document().setModified(False)
             return True
-        except Exception as e:
+        except Exception:
             # Handle errors
             return False
 
@@ -345,3 +359,137 @@ class CodeEditor(QPlainTextEdit):
 
         # For text drops, use the default behavior
         super().dropEvent(event)
+
+    def find_text(self, text, case_sensitive=False, whole_words=False, regex=False, forward=True):
+        """Find text in the document"""
+        # Create find flags
+        flags = QTextDocument.FindFlags()
+
+        if case_sensitive:
+            flags |= QTextDocument.FindCaseSensitively
+
+        if whole_words:
+            flags |= QTextDocument.FindWholeWords
+
+        if not forward:
+            flags |= QTextDocument.FindBackward
+
+        # Use regex if specified
+        if regex:
+            try:
+                pattern = QRegularExpression(text)
+                if not case_sensitive:
+                    pattern.setPatternOptions(QRegularExpression.CaseInsensitiveOption)
+                found = self.document().find(pattern, self.textCursor(), flags)
+            except Exception:
+                # Invalid regex
+                self.search_finished.emit(False)
+                return False
+        else:
+            # Use plain text search
+            found = self.document().find(text, self.textCursor(), flags)
+
+        # If not found, try wrapping around
+        if found.isNull():
+            # Move cursor to start or end of document
+            cursor = self.textCursor()
+            if forward:
+                cursor.movePosition(QTextCursor.Start)
+            else:
+                cursor.movePosition(QTextCursor.End)
+
+            self.setTextCursor(cursor)
+
+            # Try search again
+            if regex:
+                pattern = QRegularExpression(text)
+                if not case_sensitive:
+                    pattern.setPatternOptions(QRegularExpression.CaseInsensitiveOption)
+                found = self.document().find(pattern, self.textCursor(), flags)
+            else:
+                found = self.document().find(text, self.textCursor(), flags)
+
+        # If found, select the text
+        if not found.isNull():
+            self.setTextCursor(found)
+            self.search_finished.emit(True)
+            return True
+
+        # Not found
+        self.search_finished.emit(False)
+        return False
+
+    def replace_text(self, find_text, replace_text, case_sensitive=False, whole_words=False, regex=False):
+        """Replace selected text if it matches the find text"""
+        # Get the selected text
+        cursor = self.textCursor()
+        selected_text = cursor.selectedText()
+
+        # Check if the selected text matches the find text
+        if not selected_text:
+            # No text selected, try to find the text first
+            if not self.find_text(find_text, case_sensitive, whole_words, regex):
+                return False
+
+            # Get the selected text again
+            cursor = self.textCursor()
+            selected_text = cursor.selectedText()
+
+        # Check if the selected text matches the find text
+        matches = False
+        if regex:
+            try:
+                pattern = re.compile(find_text, re.IGNORECASE if not case_sensitive else 0)
+                matches = bool(pattern.fullmatch(selected_text))
+            except Exception:
+                # Invalid regex
+                return False
+        else:
+            if case_sensitive:
+                matches = selected_text == find_text
+            else:
+                matches = selected_text.lower() == find_text.lower()
+
+        # If it matches, replace it
+        if matches:
+            cursor.insertText(replace_text)
+            return True
+
+        # Try to find the text first
+        if not self.find_text(find_text, case_sensitive, whole_words, regex):
+            return False
+
+        # Replace the found text
+        cursor = self.textCursor()
+        cursor.insertText(replace_text)
+        return True
+
+    def replace_all(self, find_text, replace_text, case_sensitive=False, whole_words=False, regex=False):
+        """Replace all occurrences of the find text"""
+        # Save the current cursor position
+        original_cursor = self.textCursor()
+
+        # Move to the start of the document
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        self.setTextCursor(cursor)
+
+        # Count replacements
+        count = 0
+
+        # Start a single undo operation for all replacements
+        cursor.beginEditBlock()
+
+        # Replace all occurrences
+        while self.find_text(find_text, case_sensitive, whole_words, regex):
+            cursor = self.textCursor()
+            cursor.insertText(replace_text)
+            count += 1
+
+        # End the edit block
+        cursor.endEditBlock()
+
+        # Restore the original cursor position
+        self.setTextCursor(original_cursor)
+
+        return count

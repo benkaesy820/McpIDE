@@ -20,6 +20,7 @@ from src.ui.editor import CodeEditor
 from src.ui.theme_manager import ThemeManager
 from src.ui.welcome_screen import WelcomeScreen
 from src.ui.split_view import SplitViewContainer
+from src.ui.search_dialog import SearchDialog
 
 class MainWindow(QMainWindow):
     """
@@ -156,6 +157,9 @@ class MainWindow(QMainWindow):
         self.find_action = QAction("Find", self)
         self.find_action.setShortcut(QKeySequence.Find)
 
+        self.replace_action = QAction("Replace", self)
+        self.replace_action.setShortcut(QKeySequence("Ctrl+H"))
+
         # View actions
         self.toggle_explorer_action = QAction("Explorer", self)
         self.toggle_explorer_action.setCheckable(True)
@@ -200,6 +204,7 @@ class MainWindow(QMainWindow):
         self.edit_menu.addAction(self.paste_action)
         self.edit_menu.addSeparator()
         self.edit_menu.addAction(self.find_action)
+        self.edit_menu.addAction(self.replace_action)
 
         # View menu
         self.view_menu = self.menu_bar.addMenu("View")
@@ -267,6 +272,7 @@ class MainWindow(QMainWindow):
         self.copy_action.triggered.connect(self.copy)
         self.paste_action.triggered.connect(self.paste)
         self.find_action.triggered.connect(self.find)
+        self.replace_action.triggered.connect(self.replace)
 
         # View actions
         self.toggle_explorer_action.triggered.connect(self.toggle_explorer)
@@ -540,8 +546,61 @@ class MainWindow(QMainWindow):
     @Slot()
     def find(self):
         """Find text in the current editor"""
-        # TODO: Implement find dialog
-        pass
+        editor = self.split_view_container.get_current_editor()
+        if not editor:
+            return
+
+        # Get selected text if any
+        selected_text = ""
+        cursor = editor.textCursor()
+        if cursor.hasSelection():
+            selected_text = cursor.selectedText()
+
+        # Create and show search dialog
+        dialog = SearchDialog(self, selected_text)
+
+        # Connect signals
+        dialog.find_next.connect(lambda text, case, whole, regex:
+                               editor.find_text(text, case, whole, regex, True))
+        dialog.find_previous.connect(lambda text, case, whole, regex:
+                                  editor.find_text(text, case, whole, regex, False))
+
+        # Show dialog
+        dialog.show()
+
+    @Slot()
+    def replace(self):
+        """Replace text in the current editor"""
+        editor = self.split_view_container.get_current_editor()
+        if not editor:
+            return
+
+        # Get selected text if any
+        selected_text = ""
+        cursor = editor.textCursor()
+        if cursor.hasSelection():
+            selected_text = cursor.selectedText()
+
+        # Create and show search dialog
+        dialog = SearchDialog(self, selected_text)
+
+        # Connect signals
+        dialog.find_next.connect(lambda text, case, whole, regex:
+                               editor.find_text(text, case, whole, regex, True))
+        dialog.find_previous.connect(lambda text, case, whole, regex:
+                                  editor.find_text(text, case, whole, regex, False))
+        dialog.replace.connect(lambda find_text, replace_text, case, whole, regex:
+                             editor.replace_text(find_text, replace_text, case, whole, regex))
+        dialog.replace_all.connect(lambda find_text, replace_text, case, whole, regex:
+                                self._on_replace_all(editor, find_text, replace_text, case, whole, regex))
+
+        # Show dialog
+        dialog.show()
+
+    def _on_replace_all(self, editor, find_text, replace_text, case_sensitive, whole_words, regex):
+        """Handle replace all action"""
+        count = editor.replace_all(find_text, replace_text, case_sensitive, whole_words, regex)
+        self.status_bar.showMessage(f"Replaced {count} occurrences")
 
     @Slot()
     def toggle_explorer(self):
