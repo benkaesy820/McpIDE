@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self.split_view_container.editor_created.connect(self._on_editor_created)
         self.split_view_container.editor_closed.connect(self._on_editor_closed)
         self.split_view_container.current_editor_changed.connect(self._on_current_editor_changed)
+        self.split_view_container.file_dropped.connect(self._open_file)
 
         # Add welcome tab if needed
         if self.settings.should_show_welcome_screen() and not self.settings.is_welcome_tab_closed():

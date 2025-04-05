@@ -9,7 +9,7 @@ Provides a tree view of files and directories with context menu actions.
 import os
 from PySide6.QtWidgets import (
     QTreeView, QFileSystemModel, QVBoxLayout, QWidget,
-    QLineEdit, QMenu, QMessageBox, QInputDialog
+    QLineEdit, QMenu, QMessageBox, QInputDialog, QFileDialog
 )
 from PySide6.QtCore import Qt, QDir, Signal, Slot, QModelIndex, QSize
 from PySide6.QtGui import QAction, QKeySequence
@@ -225,6 +225,19 @@ class FileExplorer(QWidget):
                 os.makedirs(folder_path)
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Could not create folder: {str(e)}")
+
+    def _compare_with_file(self, file_path):
+        """Open file comparison dialog"""
+        # Open file dialog to select the file to compare with
+        second_file, _ = QFileDialog.getOpenFileName(
+            self, "Select File to Compare With",
+            os.path.dirname(file_path),
+            "All Files (*)"
+        )
+
+        if second_file and os.path.isfile(second_file):
+            # Emit signal to request file comparison
+            self.compare_files_requested.emit(file_path, second_file)
 
     @Slot(str)
     def _on_theme_changed(self, theme):
