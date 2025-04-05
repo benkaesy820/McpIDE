@@ -26,14 +26,19 @@ def main():
     app.setApplicationName("McpIDE")
     app.setOrganizationName("McpIDE")
     app.setOrganizationDomain("mcpide.org")
-    
+
     # Initialize settings
     settings = AppSettings()
-    
+
     # Create and show the main window
     window = MainWindow(settings)
+
+    # Set the main window as an attribute of the application
+    # This allows other components to access it
+    app.main_window = window
+
     window.show()
-    
+
     # Start the event loop
     sys.exit(app.exec())
 

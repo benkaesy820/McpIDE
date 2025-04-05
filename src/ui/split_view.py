@@ -362,6 +362,10 @@ class SplitViewContainer(QWidget):
         index = tab_widget.addTab(editor, title)
         tab_widget.setCurrentIndex(index)
 
+        # Set the parent tab widget for the editor
+        if hasattr(editor, '_parent_tab_widget'):
+            editor._parent_tab_widget = tab_widget
+
         # Connect editor signals
         if hasattr(editor, 'file_dropped'):
             editor.file_dropped.connect(self.file_dropped.emit)
@@ -442,8 +446,23 @@ class SplitViewContainer(QWidget):
         if mime_type and (mime_type.startswith('text/') or
                          mime_type in ['application/json', 'application/xml', 'application/javascript']):
             # This is a text file we can open
-            # Store the target widget for the main window to use
-            self._last_drop_target = target_widget
+
+            # Make sure the target widget is stored correctly
+            # We need to find the actual tab widget that received the drop
+            if isinstance(target_widget, EditorTabWidget):
+                # Direct drop on a tab widget
+                self._last_drop_target = target_widget
+            else:
+                # Drop on an editor or other widget, find its parent tab widget
+                parent = target_widget
+                while parent and not isinstance(parent, EditorTabWidget):
+                    parent = parent.parent()
+
+                if parent and isinstance(parent, EditorTabWidget):
+                    self._last_drop_target = parent
+                else:
+                    # Fallback to active tab widget
+                    self._last_drop_target = self._get_active_tab_widget()
 
             # Store the drop index if available
             if hasattr(target_widget, 'last_drop_index'):

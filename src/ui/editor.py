@@ -43,6 +43,9 @@ class CodeEditor(QPlainTextEdit):
         self._setup_context_menu()
         self._connect_signals()
 
+        # Set parent tab widget for later reference
+        self._parent_tab_widget = None
+
     def _setup_editor(self):
         """Set up editor properties"""
         # Set font
@@ -322,6 +325,17 @@ class CodeEditor(QPlainTextEdit):
 
             # Check if it's a file
             if os.path.isfile(file_path):
+                # If we have a parent tab widget, use it as the target
+                if hasattr(self, '_parent_tab_widget') and self._parent_tab_widget:
+                    # This will ensure the file opens in the same split view
+                    from PySide6.QtCore import QCoreApplication
+                    app = QCoreApplication.instance()
+                    if hasattr(app, 'main_window'):
+                        # Get the main window and set the target tab widget
+                        main_window = app.main_window
+                        if hasattr(main_window, 'split_view_container'):
+                            main_window.split_view_container._last_drop_target = self._parent_tab_widget
+
                 # Emit signal with the file path
                 self.file_dropped.emit(file_path)
 
