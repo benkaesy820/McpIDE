@@ -15,6 +15,7 @@ from src.ui.file_explorer import FileExplorer
 from src.ui.editor import CodeEditor
 from src.ui.theme_manager import ThemeManager
 from src.ui.welcome_screen import WelcomeScreen
+from src.ui.split_view import SplitViewContainer
 
 class MainWindow(QMainWindow):
     """
@@ -78,12 +79,16 @@ class MainWindow(QMainWindow):
         self.file_explorer_dock.setWidget(self.file_explorer)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_explorer_dock)
 
-        # Editor tabs
-        self.editor_tabs = QTabWidget()
-        self.editor_tabs.setTabsClosable(True)
-        self.editor_tabs.setMovable(True)
-        self.editor_tabs.setDocumentMode(True)
-        self.main_splitter.addWidget(self.editor_tabs)
+        # Split view container for editors
+        self.split_view_container = SplitViewContainer(self.settings)
+        self.main_splitter.addWidget(self.split_view_container)
+
+        # Get the editor tabs from the split view container
+        self.editor_tabs = next(iter(self.split_view_container.editor_tabs.values()))
+
+        # Connect split view container signals
+        self.split_view_container.editor_created.connect(self._on_editor_created)
+        self.split_view_container.editor_closed.connect(self._on_editor_closed)
 
         # Add welcome tab if needed
         if self.settings.should_show_welcome_screen() and not self.settings.is_welcome_tab_closed():
@@ -98,6 +103,7 @@ class MainWindow(QMainWindow):
         self.welcome_screen.open_folder_requested.connect(self.open_folder)
         self.welcome_screen.recent_workspace_selected.connect(self._open_recent_workspace)
 
+        # Add to the first tab widget in the split view container
         self.editor_tabs.addTab(self.welcome_screen, "Welcome")
 
     def _create_actions(self):
@@ -144,6 +150,12 @@ class MainWindow(QMainWindow):
         self.toggle_explorer_action.setCheckable(True)
         self.toggle_explorer_action.setChecked(True)
 
+        self.split_horizontal_action = QAction("Split Horizontally", self)
+        self.split_horizontal_action.setShortcut("Ctrl+\\")
+
+        self.split_vertical_action = QAction("Split Vertically", self)
+        self.split_vertical_action.setShortcut("Ctrl+Shift+\\")
+
         self.toggle_theme_action = QAction("Toggle Theme", self)
 
         # Help actions
@@ -180,6 +192,13 @@ class MainWindow(QMainWindow):
         # View menu
         self.view_menu = self.menu_bar.addMenu("View")
         self.view_menu.addAction(self.toggle_explorer_action)
+        self.view_menu.addSeparator()
+
+        # Editor layout submenu
+        self.editor_layout_menu = self.view_menu.addMenu("Editor Layout")
+        self.editor_layout_menu.addAction(self.split_horizontal_action)
+        self.editor_layout_menu.addAction(self.split_vertical_action)
+
         self.view_menu.addSeparator()
         self.view_menu.addAction(self.toggle_theme_action)
 
@@ -224,6 +243,8 @@ class MainWindow(QMainWindow):
 
         # View actions
         self.toggle_explorer_action.triggered.connect(self.toggle_explorer)
+        self.split_horizontal_action.triggered.connect(self.split_horizontal)
+        self.split_vertical_action.triggered.connect(self.split_vertical)
         self.toggle_theme_action.triggered.connect(self.toggle_theme)
 
         # Help actions
@@ -294,8 +315,8 @@ class MainWindow(QMainWindow):
         editor.textChanged.connect(lambda: self._on_editor_text_changed(editor))
         editor.cursorPositionChanged.connect(lambda: self._on_cursor_position_changed(editor))
 
-        self.editor_tabs.addTab(editor, "Untitled")
-        self.editor_tabs.setCurrentWidget(editor)
+        # Add to split view container
+        self.split_view_container.add_editor(editor, "Untitled")
 
     @Slot()
     def open_file(self):
@@ -331,12 +352,13 @@ class MainWindow(QMainWindow):
             editor.setPlainText(content)
 
             file_name = os.path.basename(file_path)
-            self.editor_tabs.addTab(editor, file_name)
-            self.editor_tabs.setCurrentWidget(editor)
 
             # Connect editor signals
             editor.textChanged.connect(lambda: self._on_editor_text_changed(editor))
             editor.cursorPositionChanged.connect(lambda: self._on_cursor_position_changed(editor))
+
+            # Add to split view container
+            self.split_view_container.add_editor(editor, file_name)
 
             self.status_bar.showMessage(f"Opened {file_path}")
         except UnicodeDecodeError:
@@ -429,6 +451,9 @@ class MainWindow(QMainWindow):
     @Slot(int)
     def close_tab(self, index):
         """Close a tab"""
+        # This method is now primarily used for the welcome tab
+        # Other tabs are handled by the split view container
+
         # Check if this is the welcome tab
         widget = self.editor_tabs.widget(index)
         tab_text = self.editor_tabs.tabText(index)
@@ -436,7 +461,10 @@ class MainWindow(QMainWindow):
         if tab_text == "Welcome":
             # Mark welcome tab as closed
             self.settings.set_welcome_tab_closed(True)
+            self.editor_tabs.removeTab(index)
+            return
 
+        # For other tabs, check for unsaved changes
         if tab_text.endswith('*'):
             response = QMessageBox.question(
                 self,
@@ -474,6 +502,28 @@ class MainWindow(QMainWindow):
         line = cursor.blockNumber() + 1
         column = cursor.columnNumber() + 1
         self.status_bar.showMessage(f"Line: {line}, Column: {column}")
+
+    @Slot()
+    def split_horizontal(self):
+        """Split the editor view horizontally"""
+        self.split_view_container.split_horizontally()
+
+    @Slot()
+    def split_vertical(self):
+        """Split the editor view vertically"""
+        self.split_view_container.split_vertically()
+
+    @Slot(CodeEditor)
+    def _on_editor_created(self, editor):
+        """Handle editor created signal from split view container"""
+        # This is called when a new editor is created in any split
+        pass
+
+    @Slot(CodeEditor)
+    def _on_editor_closed(self, editor):
+        """Handle editor closed signal from split view container"""
+        # This is called when an editor is closed in any split
+        pass
 
     def _save_open_files(self):
         """Save the list of open files"""
