@@ -397,7 +397,20 @@ class MainWindow(QMainWindow):
         # Load the file
         if editor.load_file(file_path):
             file_name = os.path.basename(file_path)
-            self.split_view_container.add_editor(editor, file_name)
+
+            # Check if we have a specific target tab widget from a drop
+            target_tab_widget = self.split_view_container.get_last_drop_target()
+
+            if target_tab_widget and target_tab_widget in self.split_view_container.editor_tabs.values():
+                # Add to the specific tab widget that received the drop
+                self.split_view_container.add_editor(editor, file_name, target_tab_widget)
+            else:
+                # Add to the active tab widget
+                self.split_view_container.add_editor(editor, file_name)
+
+            # Reset the last drop target
+            self.split_view_container._last_drop_target = None
+
             self.status_bar.showMessage(f"Opened {file_path}")
         else:
             QMessageBox.critical(self, "Error", f"Could not open file: {file_path}")

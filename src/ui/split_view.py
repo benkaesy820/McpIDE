@@ -65,6 +65,7 @@ class SplitViewContainer(QWidget):
         self.settings = settings
         self.main_splitter = None
         self.editor_tabs = {}  # Dictionary to track editor tab widgets
+        self._last_drop_target = None  # Store the last widget that received a drop
 
         self._setup_ui()
 
@@ -77,6 +78,8 @@ class SplitViewContainer(QWidget):
 
         # Create main splitter
         self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.main_splitter.customContextMenuRequested.connect(self._show_splitter_context_menu)
         self.layout.addWidget(self.main_splitter)
 
         # Create initial editor tabs
@@ -368,6 +371,10 @@ class SplitViewContainer(QWidget):
             return tab_widget.currentWidget()
         return None
 
+    def get_last_drop_target(self):
+        """Get the last widget that received a file drop"""
+        return self._last_drop_target
+
     def get_editor_by_path(self, file_path):
         """Get an editor by its file path"""
         for tab_id, tabs in self.editor_tabs.items():
@@ -377,21 +384,58 @@ class SplitViewContainer(QWidget):
                     return widget
         return None
 
+    def _show_splitter_context_menu(self, position):
+        """Show context menu for splitter"""
+        # Only show context menu if we have multiple splits
+        if len(self.editor_tabs) < 2:
+            return
+
+        # Create menu
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu()
+
+        # Get the splitter that was clicked
+        sender = self.sender()
+        if not isinstance(sender, QSplitter):
+            return
+
+        # Add actions based on current orientation
+        if sender.orientation() == Qt.Horizontal:
+            action = menu.addAction("Switch to Vertical Split")
+            action.triggered.connect(lambda: self._switch_splitter_orientation(sender))
+        else:
+            action = menu.addAction("Switch to Horizontal Split")
+            action.triggered.connect(lambda: self._switch_splitter_orientation(sender))
+
+        # Show menu
+        menu.exec_(sender.mapToGlobal(position))
+
+    def _switch_splitter_orientation(self, splitter):
+        """Switch the orientation of a splitter"""
+        # Toggle orientation
+        new_orientation = Qt.Vertical if splitter.orientation() == Qt.Horizontal else Qt.Horizontal
+        splitter.setOrientation(new_orientation)
+
+        # Adjust sizes to be equal
+        if new_orientation == Qt.Horizontal:
+            splitter.setSizes([splitter.width() // splitter.count()] * splitter.count())
+        else:
+            splitter.setSizes([splitter.height() // splitter.count()] * splitter.count())
+
     @Slot(str, object)
     def _on_file_dropped(self, file_path, target_widget):
         """Handle file dropped onto a tab widget"""
-        # Emit signal for the main window to handle
-        self.file_dropped.emit(file_path)
-
-        # If we have multiple tab widgets, we can use the target to determine where to open the file
-        if len(self.editor_tabs) > 1:
-            # Get the file name
-            file_name = os.path.basename(file_path)
-
-            # Check if this is a valid file type we can open
-            mime_type, _ = mimetypes.guess_type(file_path)
-            if mime_type and (mime_type.startswith('text/') or
-                             mime_type in ['application/json', 'application/xml', 'application/javascript']):
-                # This is a text file we can open
-                # The main window will handle creating the editor and loading the file
-                pass
+        # Check if this is a valid file type we can open
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type and (mime_type.startswith('text/') or
+                         mime_type in ['application/json', 'application/xml', 'application/javascript']):
+            # This is a text file we can open
+            # Store the target widget for the main window to use
+            self._last_drop_target = target_widget
+            # Emit signal with file path
+            self.file_dropped.emit(file_path)
+        else:
+            # Not a valid text file
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(None, "Invalid File Type",
+                              f"The file {os.path.basename(file_path)} does not appear to be a text file that can be opened in the editor.")
